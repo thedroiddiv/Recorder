@@ -20,19 +20,17 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.daiatech.waveform.graphs.AmplitudeGraph
-import com.daiatech.waveform.graphs.GraphType
 import com.example.voicenotes.RecorderUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,14 +39,8 @@ fun RecordScreen(
     state: RecorderUiState,
     onStop: () -> Unit,
     onBack: () -> Unit,
-    onFinished: () -> Unit
+    onFinished: () -> Unit = {}
 ) {
-    LaunchedEffect(state.isRecording, state.isSaving) {
-        if (!state.isRecording && !state.isSaving) {
-            onFinished()
-        }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -79,7 +71,7 @@ fun RecordScreen(
             Spacer(Modifier.weight(1f))
 
             Text(
-                text = "VOICE NOTE",
+                text = "Recording",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -99,18 +91,14 @@ fun RecordScreen(
                 )
             ) {
                 Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 20.dp)) {
-                    AmplitudeGraph(
+                    val progress = (state.amplitude / 32767F).coerceIn(0F, 1F)
+                    LinearProgressIndicator(
+                        progress = { progress },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(160.dp),
-                        currentAmp = state.amplitude,
-                        isPaused = !state.isRecording,
-                        noOfPoints = 72,
-                        maxAmplitude = 32_767F,
-                        type = GraphType.Bar(
-                            barGap = 3.dp,
-                            barColor = MaterialTheme.colorScheme.primary
-                        )
+                            .height(8.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 }
             }
@@ -119,7 +107,7 @@ fun RecordScreen(
 
             Text(
                 text = if (state.isSaving) {
-                    "Finishing up your recording..."
+                    "Finishing up..."
                 } else {
                     "Listening..."
                 },
@@ -141,14 +129,14 @@ fun RecordScreen(
             Spacer(Modifier.weight(1f))
 
             FilledIconButton(
-                onClick = onStop,
+                onClick = { if (!state.isSaving) onStop() },
                 enabled = !state.isSaving,
                 modifier = Modifier.size(88.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError,
-                    disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.5F),
-                    disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.7F)
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
                 if (state.isSaving) {

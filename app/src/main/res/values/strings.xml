@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Voice Notes</string>
+    <string name="app_name">Recorder</string>
     <string name="unused_export_archive">Export archive</string>
     <string name="unused_cloud_backup">Cloud backup</string>
     <string name="unused_transcription_pending">Transcription pending</string>

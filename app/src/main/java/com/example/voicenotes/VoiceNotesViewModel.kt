@@ -32,7 +32,8 @@ data class RecorderUiState(
     val isSaving: Boolean = false,
     val elapsedMs: Long = 0L,
     val amplitude: Float = 0F,
-    val error: String? = null
+    val error: String? = null,
+    val lastSavedNoteId: String? = null
 )
 
 data class PlaybackUiState(
@@ -65,32 +66,51 @@ class VoiceNotesViewModel(application: Application) : AndroidViewModel(applicati
     )
 
     private var recordingTimer: Job? = null
+    private var amplitudeTimer: Job? = null
     private var playbackTicker: Job? = null
 
     private val recorderController = RecorderController(
         context = application,
-        scope = viewModelScope,
         onStarted = ::handleRecordingStarted,
         onAmplitude = { amplitude ->
             _recorderState.update { it.copy(amplitude = amplitude) }
         },
-        onCompleted = ::handleRecordingCompleted,
+        onCompleted = { filePath, durationMs ->
+            viewModelScope.launch {
+                handleRecordingCompleted(filePath, durationMs)
+            }
+        },
         onError = { message ->
-            _recorderState.value = RecorderUiState(error = message)
+            viewModelScope.launch {
+                recordingTimer?.cancel()
+                amplitudeTimer?.cancel()
+                _recorderState.update { it.copy(error = message, isRecording = false, isSaving = false) }
+            }
         }
     )
 
     fun startRecording(): Boolean {
         if (_recorderState.value.isRecording) return false
-        _recorderState.value = RecorderUiState(isRecording = true)
-        return recorderController.start(sampleRate.value)
+        _recorderState.value = RecorderUiState(isRecording = true, amplitude = 0F)
+        val started = recorderController.start(sampleRate.value)
+        if (started) {
+            startAmplitudeUpdates()
+        }
+        return started
     }
 
     fun stopRecording() {
-        if (!_recorderState.value.isRecording) return
+        if (_recorderState.value.isSaving) return
+        if (!_recorderState.value.isRecording) {
+            _recorderState.update { RecorderUiState() }
+            return
+        }
         recordingTimer?.cancel()
-        _recorderState.update { it.copy(isSaving = true) }
-        recorderController.stop()
+        amplitudeTimer?.cancel()
+        _recorderState.update { it.copy(isSaving = true, isRecording = false, amplitude = 0F, lastSavedNoteId = null) }
+        viewModelScope.launch(Dispatchers.IO) {
+            recorderController.stop()
+        }
     }
 
     fun setSampleRate(rate: Int) {
@@ -141,10 +161,21 @@ class VoiceNotesViewModel(application: Application) : AndroidViewModel(applicati
         _playbackState.value = PlaybackUiState()
     }
 
+    private fun startAmplitudeUpdates() {
+        amplitudeTimer?.cancel()
+        amplitudeTimer = viewModelScope.launch {
+            while (isActive && _recorderState.value.isRecording) {
+                val amp = recorderController.getMaxAmplitude()
+                _recorderState.update { it.copy(amplitude = amp) }
+                delay(50)
+            }
+        }
+    }
+
     private fun handleRecordingStarted() {
         recordingTimer?.cancel()
         val startedAt = SystemClock.elapsedRealtime()
-        _recorderState.value = RecorderUiState(isRecording = true)
+        _recorderState.update { it.copy(isRecording = true, isSaving = false, error = null) }
         recordingTimer = viewModelScope.launch {
             while (isActive) {
                 _recorderState.update {
@@ -155,30 +186,31 @@ class VoiceNotesViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    private fun handleRecordingCompleted(filePath: String, durationMs: Long) {
+    private suspend fun handleRecordingCompleted(filePath: String, durationMs: Long) {
         recordingTimer?.cancel()
+        amplitudeTimer?.cancel()
 
         if (durationMs <= 0L) {
-            File(filePath).delete()
+            withContext(Dispatchers.IO) {
+                runCatching { File(filePath).delete() }
+            }
             _recorderState.value = RecorderUiState(error = "Recording was too short")
             return
         }
 
-        viewModelScope.launch {
-            val createdAt = System.currentTimeMillis()
-            val note = Note(
-                id = UUID.randomUUID().toString(),
-                title = buildNoteTitle(createdAt),
-                filePath = filePath,
-                durationMs = durationMs,
-                createdAt = createdAt
-            )
-            val updatedNotes = withContext(Dispatchers.IO) {
-                repository.addNote(note)
-            }
-            _notes.value = updatedNotes
-            _recorderState.value = RecorderUiState()
+        val createdAt = System.currentTimeMillis()
+        val note = Note(
+            id = UUID.randomUUID().toString(),
+            title = buildNoteTitle(createdAt),
+            filePath = filePath,
+            durationMs = durationMs,
+            createdAt = createdAt
+        )
+        val updatedNotes = withContext(Dispatchers.IO) {
+            repository.addNote(note)
         }
+        _notes.value = updatedNotes
+        _recorderState.value = RecorderUiState(lastSavedNoteId = note.id)
     }
 
     private fun buildNoteTitle(createdAt: Long): String {
@@ -187,7 +219,7 @@ class VoiceNotesViewModel(application: Application) : AndroidViewModel(applicati
             DateFormat.SHORT,
             Locale.getDefault()
         ).format(Date(createdAt))
-        return "Voice note · $timestamp"
+        return "Recording · $timestamp"
     }
 
     private fun startPlayback(note: Note) {
@@ -230,7 +262,9 @@ class VoiceNotesViewModel(application: Application) : AndroidViewModel(applicati
 
     override fun onCleared() {
         recordingTimer?.cancel()
+        amplitudeTimer?.cancel()
         playbackTicker?.cancel()
+        recorderController.stop()
         player.release()
     }
 }

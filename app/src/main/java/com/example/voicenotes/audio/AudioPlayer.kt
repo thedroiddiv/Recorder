@@ -13,6 +13,9 @@ class AudioPlayer {
     val positionMs: Long
         get() = runCatching { mediaPlayer?.currentPosition?.toLong() ?: 0L }.getOrDefault(0L)
 
+    val durationMs: Long
+        get() = runCatching { mediaPlayer?.duration?.toLong() ?: 0L }.getOrDefault(0L)
+
     fun play(filePath: String, onCompleted: () -> Unit) {
         release()
         val player = MediaPlayer()

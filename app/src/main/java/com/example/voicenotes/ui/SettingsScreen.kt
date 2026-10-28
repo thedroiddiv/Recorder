@@ -41,7 +41,7 @@ private val sampleRateOptions = listOf(
     SampleRateOption(
         value = 16_000,
         title = "16 kHz",
-        description = "Recommended for voice notes. Smaller files."
+        description = "Recommended for recordings. Smaller files."
     ),
     SampleRateOption(
         value = 44_100,

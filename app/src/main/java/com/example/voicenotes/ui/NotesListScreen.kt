@@ -53,7 +53,7 @@ fun NotesListScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Voice Notes",
+                        text = "Recordings",
                         fontWeight = FontWeight.SemiBold
                     )
                 },
@@ -180,11 +180,11 @@ private fun EmptyNotes(modifier: Modifier = Modifier) {
             }
         }
         Spacer(Modifier.height(24.dp))
-        Text(
-            text = "No recordings yet",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold
-        )
+                    Text(
+                        text = "Recorder",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
         Spacer(Modifier.height(8.dp))
         Text(
             text = "Tap Record and start speaking. Your notes will appear here.",
