@@ -9,8 +9,5 @@ This demo app is intended for internal APK-size experiments. Review these notes 
 | AndroidX DataStore Preferences | 1.3.0 | Apache License 2.0 | Commercial use permitted. |
 | Gson | 2.13.2 | Apache License 2.0 | Commercial use permitted. |
 | Kotlin standard library and kotlinx.coroutines | 2.2.x / 1.10.2 | Apache License 2.0 | Commercial use permitted. |
-| RawAudioRecorder | 0.0.7 | Conflicting metadata: MIT license text in the v0.0.7 repository, Apache-2.0 in GitHub metadata, GPL-3.0 in the Maven POM | Treat the most restrictive declared metadata (GPL-3.0) as applicable until the project owner confirms otherwise. |
-| Waveform | 0.0.6 | GPL-3.0 in the Maven POM; no license file found at the v0.0.6 tag | GPL-3.0 permits commercial use but carries source-disclosure and copyleft obligations. |
-| Karya UI | 0.0.6 | GPL-3.0 in the Maven POM | Transitive dependency of Waveform. Same obligations. |
 
-The app project itself is a demo. If either Karya library is redistributed, confirm the intended license with its author and comply with the applicable terms.
+No third-party recording or waveform libraries are used; recording uses Android MediaRecorder API.

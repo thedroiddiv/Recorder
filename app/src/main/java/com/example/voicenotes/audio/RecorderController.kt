@@ -4,30 +4,27 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.media.MediaRecorder
+import android.os.Build
 import androidx.core.content.ContextCompat
-import com.daiatech.karya.rawaudiorecorder.RawAudioRecorder
-import com.daiatech.karya.rawaudiorecorder.RecorderConfig
-import com.daiatech.karya.rawaudiorecorder.RecorderEventListener
-import com.daiatech.karya.rawaudiorecorder.SampleRate
 import java.io.File
-import kotlinx.coroutines.CoroutineScope
+import java.io.IOException
 
 class RecorderController(
     private val context: Context,
-    private val scope: CoroutineScope,
     private val onStarted: () -> Unit,
     private val onAmplitude: (Float) -> Unit,
     private val onCompleted: (String, Long) -> Unit,
     private val onError: (String) -> Unit
-) : RecorderEventListener {
-
+) {
     private val recordingsDir = File(context.filesDir, "recordings").apply { mkdirs() }
-    private var recorder: RawAudioRecorder? = null
+    private var mediaRecorder: MediaRecorder? = null
     private var currentFile: File? = null
+    private var startTimeMs: Long = 0L
 
     @SuppressLint("MissingPermission")
     fun start(sampleRate: Int): Boolean {
-        if (recorder != null) return false
+        if (mediaRecorder != null) return false
 
         if (
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) !=
@@ -37,20 +34,30 @@ class RecorderController(
             return false
         }
 
-        val file = File(recordingsDir, "voice_note_${System.currentTimeMillis()}.wav")
+        val file = File(recordingsDir, "voice_note_${System.currentTimeMillis()}.m4a")
         currentFile = file
 
         return try {
-            val config = RecorderConfig(
-                sampleRate = if (sampleRate == 44_100) SampleRate._44_K else SampleRate._16_K
-            )
-            val newRecorder = RawAudioRecorder(this, scope)
-            newRecorder.prepare(file.absolutePath, config)
-            recorder = newRecorder
-            newRecorder.startRecording()
+            val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                MediaRecorder(context)
+            } else {
+                @Suppress("DEPRECATION")
+                MediaRecorder()
+            }
+            recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            recorder.setAudioSamplingRate(sampleRate)
+            recorder.setOutputFile(file.absolutePath)
+            recorder.prepare()
+            recorder.start()
+            mediaRecorder = recorder
+            startTimeMs = System.currentTimeMillis()
+            onStarted()
             true
         } catch (error: Throwable) {
-            recorder = null
+            mediaRecorder?.release()
+            mediaRecorder = null
             currentFile = null
             file.delete()
             onError(error.message ?: "Unable to start recording")
@@ -59,29 +66,35 @@ class RecorderController(
     }
 
     fun stop() {
-        recorder?.stopRecording()
-    }
-
-    override fun onPrepared() = Unit
-
-    override fun onStart() {
-        onStarted()
-    }
-
-    override fun onPause() = Unit
-
-    override fun onResume() = Unit
-
-    override fun onStop(durationMs: Long) {
+        val recorder = mediaRecorder ?: return
         val file = currentFile
-        recorder = null
-        currentFile = null
+        try {
+            recorder.stop()
+        } catch (error: Throwable) {
+            onError(error.message ?: "Unable to stop recording")
+            mediaRecorder?.release()
+            mediaRecorder = null
+            currentFile = null
+            file?.delete()
+            return
+        }
+        recorder.release()
+        mediaRecorder = null
+        val durationMs = if (startTimeMs > 0L) System.currentTimeMillis() - startTimeMs else 0L
+        startTimeMs = 0L
         if (file != null) {
             onCompleted(file.absolutePath, durationMs)
         }
+        currentFile = null
     }
 
-    override fun onProgressUpdate(maxAmplitude: Int, duration: Long) {
-        onAmplitude(maxAmplitude.coerceAtLeast(0).toFloat())
+    fun getMaxAmplitude(): Float {
+        val recorder = mediaRecorder ?: return 0F
+        return try {
+            val amp = recorder.maxAmplitude
+            amp.coerceAtLeast(0).toFloat()
+        } catch (error: Throwable) {
+            0F
+        }
     }
 }

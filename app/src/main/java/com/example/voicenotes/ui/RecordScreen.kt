@@ -20,19 +20,17 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.daiatech.waveform.graphs.AmplitudeGraph
-import com.daiatech.waveform.graphs.GraphType
 import com.example.voicenotes.RecorderUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,12 +41,6 @@ fun RecordScreen(
     onBack: () -> Unit,
     onFinished: () -> Unit
 ) {
-    LaunchedEffect(state.isRecording, state.isSaving) {
-        if (!state.isRecording && !state.isSaving) {
-            onFinished()
-        }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -99,18 +91,14 @@ fun RecordScreen(
                 )
             ) {
                 Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 20.dp)) {
-                    AmplitudeGraph(
+                    val progress = (state.amplitude / 32767F).coerceIn(0F, 1F)
+                    LinearProgressIndicator(
+                        progress = { progress },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(160.dp),
-                        currentAmp = state.amplitude,
-                        isPaused = !state.isRecording,
-                        noOfPoints = 72,
-                        maxAmplitude = 32_767F,
-                        type = GraphType.Bar(
-                            barGap = 3.dp,
-                            barColor = MaterialTheme.colorScheme.primary
-                        )
+                            .height(8.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 }
             }
@@ -142,7 +130,7 @@ fun RecordScreen(
 
             FilledIconButton(
                 onClick = onStop,
-                enabled = !state.isSaving,
+                enabled = !state.isSaving && state.isRecording,
                 modifier = Modifier.size(88.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.error,

@@ -65,30 +65,35 @@ class VoiceNotesViewModel(application: Application) : AndroidViewModel(applicati
     )
 
     private var recordingTimer: Job? = null
+    private var amplitudeTimer: Job? = null
     private var playbackTicker: Job? = null
 
     private val recorderController = RecorderController(
         context = application,
-        scope = viewModelScope,
         onStarted = ::handleRecordingStarted,
         onAmplitude = { amplitude ->
             _recorderState.update { it.copy(amplitude = amplitude) }
         },
         onCompleted = ::handleRecordingCompleted,
         onError = { message ->
-            _recorderState.value = RecorderUiState(error = message)
+            _recorderState.update { it.copy(error = message, isRecording = false, isSaving = false) }
         }
     )
 
     fun startRecording(): Boolean {
         if (_recorderState.value.isRecording) return false
-        _recorderState.value = RecorderUiState(isRecording = true)
-        return recorderController.start(sampleRate.value)
+        _recorderState.value = RecorderUiState(isRecording = true, amplitude = 0F)
+        val started = recorderController.start(sampleRate.value)
+        if (started) {
+            startAmplitudeUpdates()
+        }
+        return started
     }
 
     fun stopRecording() {
         if (!_recorderState.value.isRecording) return
         recordingTimer?.cancel()
+        amplitudeTimer?.cancel()
         _recorderState.update { it.copy(isSaving = true) }
         recorderController.stop()
     }
@@ -141,10 +146,21 @@ class VoiceNotesViewModel(application: Application) : AndroidViewModel(applicati
         _playbackState.value = PlaybackUiState()
     }
 
+    private fun startAmplitudeUpdates() {
+        amplitudeTimer?.cancel()
+        amplitudeTimer = viewModelScope.launch {
+            while (isActive && _recorderState.value.isRecording) {
+                val amp = recorderController.getMaxAmplitude()
+                _recorderState.update { it.copy(amplitude = amp) }
+                delay(50)
+            }
+        }
+    }
+
     private fun handleRecordingStarted() {
         recordingTimer?.cancel()
         val startedAt = SystemClock.elapsedRealtime()
-        _recorderState.value = RecorderUiState(isRecording = true)
+        _recorderState.update { it.copy(isRecording = true, isSaving = false, error = null) }
         recordingTimer = viewModelScope.launch {
             while (isActive) {
                 _recorderState.update {
@@ -157,6 +173,7 @@ class VoiceNotesViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun handleRecordingCompleted(filePath: String, durationMs: Long) {
         recordingTimer?.cancel()
+        amplitudeTimer?.cancel()
 
         if (durationMs <= 0L) {
             File(filePath).delete()
@@ -230,7 +247,9 @@ class VoiceNotesViewModel(application: Application) : AndroidViewModel(applicati
 
     override fun onCleared() {
         recordingTimer?.cancel()
+        amplitudeTimer?.cancel()
         playbackTicker?.cancel()
+        recorderController.stop()
         player.release()
     }
 }
