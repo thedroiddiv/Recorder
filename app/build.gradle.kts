@@ -42,6 +42,8 @@ android {
 
     buildTypes {
         release {
+            isShrinkResources = true
+            optimization.enable = true
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
