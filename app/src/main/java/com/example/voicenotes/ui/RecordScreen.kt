@@ -30,8 +30,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.voicenotes.RecorderUiState
+import com.example.voicenotes.ui.theme.VoiceNotesTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -162,5 +164,21 @@ fun RecordScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RecordScreenPreview() {
+    VoiceNotesTheme {
+        RecordScreen(
+            state = RecorderUiState(
+                isRecording = true,
+                elapsedMs = 42_000L,
+                amplitude = 18_000F
+            ),
+            onStop = { },
+            onBack = { }
+        )
     }
 }

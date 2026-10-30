@@ -29,7 +29,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.voicenotes.ui.theme.VoiceNotesTheme
 
 private data class SampleRateOption(
     val value: Int,
@@ -160,5 +162,17 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SettingsScreenPreview() {
+    VoiceNotesTheme {
+        SettingsScreen(
+            sampleRate = 16_000,
+            onSampleRateChange = { },
+            onBack = { }
+        )
     }
 }

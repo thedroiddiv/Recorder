@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,9 +33,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.voicenotes.PlaybackUiState
 import com.example.voicenotes.data.Note
+import com.example.voicenotes.ui.theme.VoiceNotesTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,6 +76,14 @@ fun DetailScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { }) {
+                        Icon(
+                            imageVector = Icons.Filled.Share,
+                            contentDescription = null
                         )
                     }
                 }
@@ -153,12 +164,12 @@ fun DetailScreen(
 
             FilledIconButton(
                 onClick = onTogglePlayback,
-                modifier = Modifier.size(72.dp)
+                modifier = Modifier.size(32.dp)
             ) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     contentDescription = if (isPlaying) "Pause" else "Play",
-                    modifier = Modifier.size(34.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
@@ -187,5 +198,31 @@ fun DetailScreen(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DetailScreenPreview() {
+    VoiceNotesTheme {
+        DetailScreen(
+            note = Note(
+                id = "1",
+                title = "Team standup",
+                filePath = "",
+                durationMs = 95_000L,
+                createdAt = System.currentTimeMillis()
+            ),
+            playback = PlaybackUiState(
+                noteId = "1",
+                isPlaying = false,
+                positionMs = 30_000L,
+                durationMs = 95_000L
+            ),
+            onBack = { },
+            onTogglePlayback = { },
+            onSeek = { },
+            onStopPlayback = { }
+        )
     }
 }
